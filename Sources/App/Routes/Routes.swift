@@ -20,9 +20,10 @@ extension Droplet {
                 }
 
                 var client: Response?
-                var body: Bytes?
+                var body: String = ""
                 var mustContinue = true
                 var minusDays: Int = 0
+                var dateString: String = ""
 
                 while mustContinue {
                     let date = Calendar.current.date(byAdding: .day, value: minusDays,
@@ -30,23 +31,27 @@ extension Droplet {
                                                      wrappingComponents: true)
                     let dateFormatter = DateFormatter()
                     dateFormatter.dateFormat = "yyyy-MM-dd"
-                    let dateString = dateFormatter.string(from: date!)
+                    dateString = dateFormatter.string(from: date!)
 
                     client = try self.client.get("http://iptvgratuit.com/iptv-m3u/\(country)-\(dateString).m3u")
 
                     if client?.status.statusCode == 200 {
                         mustContinue = false
-                        body = client?.body.bytes!
+                        if let bodyBytes = client?.body.bytes {
+                            body = String(bytes: bodyBytes, encoding: String.Encoding.utf8) ?? ""
+                        }
                     } else {
                         minusDays -= 1
                     }
 
-                    if minusDays < -5 {
+                    if minusDays < -10 {
                         return Response(status: .notFound, body: "Not found")
                     }
                 }
+                
+                let finalBody = "#\(country.uppercased()): \(dateString)\n\(body)"
 
-                let output = Response(status: .ok, body: body!)
+                let output = Response(status: .ok, body: finalBody)
 
                 return output
             }
